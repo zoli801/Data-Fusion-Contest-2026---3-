@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚔️ Heroes VRPTW — Визуализация решений (точный скор)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #080c10;
+  --panel: #0e1620;
+  --panel2: #141f2e;
+  --border: #1e3048;
+  --gold: #c8a84b;
+  --gold2: #e8c96d;
+  --goldDim: #7a5f20;
+  --text: #ddd0b8;
+  --textDim: #8a7d6a;
+  --red: #8b1a1a;
+  --green: #1e5c1e;
+  --green2: #2d8b2d;
+  --blue: #1a3a5c;
+  --accent: #3d7ab5;
+  --mapBg: #0a160a;
+  --radius: 6px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 15px;
+}
+
+/* UPLOAD SCREEN */
+#upload-screen {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at center, #0e1a26 0%, #040608 100%);
+}
+#upload-screen.hidden { display: none; }
+.upload-box {
+  text-align: center;
+  max-width: 800px; width: 90%;
+}
+.upload-title {
+  font-family: 'Cinzel', serif;
+  font-size: 2.6rem; font-weight: 800;
+  color: var(--gold);
+  text-shadow: 0 0 40px #c8a84b66;
+  letter-spacing: .08em;
+  margin-bottom: .3em;
+}
+.upload-sub {
+  font-size: 1.05rem; color: var(--textDim);
+  margin-bottom: 2.2rem; font-style: italic;
+}
+.upload-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 12px; margin-bottom: 1.8rem;
+}
+.file-slot {
+  background: var(--panel2);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 14px 12px;
+  cursor: pointer; transition: all .2s;
+  position: relative;
+}
+.file-slot:hover { border-color: var(--gold); background: #1a2840; }
+.file-slot.loaded { border-color: var(--green2); border-style: solid; }
+.file-slot label { cursor: pointer; display: block; }
+.file-slot input[type=file] { display: none; }
+.slot-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .8rem; color: var(--gold);
+  display: block; margin-bottom: 4px;
+}
+.slot-desc { font-size: .85rem; color: var(--textDim); }
+.slot-status {
+  position: absolute; top: 8px; right: 10px;
+  font-size: .75rem;
+}
+.slot-status.ok { color: var(--green2); }
+.btn-primary {
+  font-family: 'Cinzel', serif;
+  background: linear-gradient(135deg, #8b6f1a, #c8a84b, #8b6f1a);
+  color: #0a0800;
+  border: none; padding: 14px 48px;
+  font-size: 1rem; font-weight: 600;
+  border-radius: 3px; cursor: pointer;
+  letter-spacing: .1em; text-transform: uppercase;
+  transition: all .2s;
+  box-shadow: 0 4px 20px #c8a84b44;
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px #c8a84b66; }
+.btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.demo-link {
+  display: block; margin-top: 1.2rem;
+  color: var(--textDim); font-size: .9rem;
+  cursor: pointer; text-decoration: underline;
+}
+.demo-link:hover { color: var(--gold); }
+
+/* MAIN APP */
+#main-app {
+  display: none; height: 100vh;
+  grid-template-columns: 300px 1fr 280px;
+  grid-template-rows: 56px 1fr;
+  grid-template-areas:
+    "header header header"
+    "sidebar map stats";
+}
+#main-app.visible { display: grid; }
+
+/* HEADER */
+#app-header {
+  grid-area: header;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 20px; gap: 20px;
+}
+.app-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem; font-weight: 700;
+  color: var(--gold);
+  letter-spacing: .06em;
+  flex-shrink: 0;
+}
+.header-stats {
+  display: flex; gap: 24px; margin-left: 10px;
+}
+.hstat {
+  display: flex; flex-direction: column;
+  font-size: .7rem; color: var(--textDim);
+  text-transform: uppercase; letter-spacing: .08em;
+}
+.hstat span {
+  font-family: 'Cinzel', serif;
+  font-size: 1.05rem; color: var(--gold);
+  font-weight: 600;
+}
+.spacer { flex: 1; }
+#day-controls {
+  display: flex; align-items: center; gap: 10px;
+}
+.day-label {
+  font-family: 'Cinzel', serif;
+  font-size: .75rem; color: var(--textDim);
+  text-transform: uppercase; letter-spacing: .1em;
+}
+#day-slider {
+  -webkit-appearance: none;
+  width: 180px; height: 4px;
+  background: linear-gradient(to right, var(--gold) 0%, var(--border) 0%);
+  border-radius: 2px; outline: none; cursor: pointer;
+}
+#day-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  background: var(--gold); border-radius: 50%;
+  cursor: pointer;
+}
+#day-display {
+  font-family: 'Cinzel', serif;
+  font-size: 1rem; font-weight: 700;
+  color: var(--gold2); min-width: 50px; text-align: center;
+}
+.btn-upload2 {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--textDim); font-size: .75rem;
+  padding: 6px 12px; border-radius: 4px; cursor: pointer;
+  font-family: 'Crimson Text', serif;
+  transition: all .15s;
+}
+.btn-upload2:hover { border-color: var(--gold); color: var(--gold); }
+
+/* SIDEBAR */
+#sidebar {
+  grid-area: sidebar;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.sidebar-title {
+  font-family: 'Cinzel', serif;
+  font-size: .85rem; font-weight: 700;
+  color: var(--gold); letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.search-box {
+  width: 100%;
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--text); padding: 7px 10px;
+  border-radius: 4px; font-size: .85rem;
+  font-family: 'Crimson Text', serif;
+  outline: none; transition: border-color .15s;
+}
+.search-box:focus { border-color: var(--gold); }
+.filter-row {
+  display: flex; gap: 6px; margin-top: 8px;
+}
+.filter-btn {
+  flex: 1; padding: 5px 4px;
+  background: var(--panel2); border: 1px solid var(--border);
+  color: var(--textDim); font-size: .72rem;
+  border-radius: 3px; cursor: pointer; text-align: center;
+  transition: all .15s; font-family: 'Cinzel', serif;
+  letter-spacing: .04em;
+}
+.filter-btn.active { background: var(--goldDim); border-color: var(--gold); color: var(--gold); }
+#hero-list {
+  flex: 1; overflow-y: auto; padding: 8px 0;
+}
+#hero-list::-webkit-scrollbar { width: 4px; }
+#hero-list::-webkit-scrollbar-track { background: transparent; }
+#hero-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.hero-item {
+  display: flex; align-items: center;
+  padding: 8px 14px; cursor: pointer; gap: 10px;
+  border-left: 3px solid transparent;
+  transition: all .12s; position: relative;
+}
+.hero-item:hover { background: var(--panel2); }
+.hero-item.active {
+  background: #1a2840;
+  border-left-color: var(--gold);
+}
+.hero-avatar {
+  width: 32px; height: 32px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; flex-shrink: 0;
+  font-weight: bold; font-family: 'Cinzel', serif;
+  font-size: .75rem; letter-spacing: 0;
+}
+.hero-info { flex: 1; min-width: 0; }
+.hero-name {
+  font-family: 'Cinzel', serif;
+  font-size: .78rem; font-weight: 600;
+  color: var(--text); white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hero-subline {
+  font-size: .72rem; color: var(--textDim);
+  display: flex; gap: 8px; margin-top: 1px;
+}
+.hero-subline span { white-space: nowrap; }
+.hero-gold-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .75rem; color: var(--gold);
+  background: #1a1200; border: 1px solid var(--goldDim);
+  border-radius: 3px; padding: 2px 5px; flex-shrink: 0;
+}
+.mp-bar {
+  height: 2px; background: var(--border);
+  border-radius: 1px; margin-top: 3px;
+  overflow: hidden;
+}
+.mp-bar-fill { height: 100%; border-radius: 1px; transition: width .3s; }
+
+/* MAP */
+#map-panel {
+  grid-area: map;
+  background: var(--mapBg);
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+#map-canvas { flex: 1; width: 100%; cursor: crosshair; }
+.map-overlay {
+  position: absolute; top: 14px; left: 14px;
+  display: flex; flex-direction: column; gap: 8px;
+  pointer-events: none;
+}
+.map-legend {
+  background: rgba(14,22,32,.88);
+  border: 1px solid var(--border);
+  border-radius: 6px; padding: 10px 14px;
+  font-size: .78rem;
+}
+.legend-title {
+  font-family: 'Cinzel', serif;
+  font-size: .72rem; color: var(--gold);
+  text-transform: uppercase; letter-spacing: .08em;
+  margin-bottom: 6px;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%; flex-shrink: 0;
+}
+.map-tooltip {
+  position: absolute; background: rgba(8,12,16,.95);
+  border: 1px solid var(--gold);
+  border-radius: 5px; padding: 8px 12px;
+  font-size: .82rem; pointer-events: none;
+  display: none; z-index: 10; max-width: 200px;
+}
+.map-tooltip.visible { display: block; }
+.tt-title { font-family: 'Cinzel', serif; color: var(--gold); font-size: .8rem; margin-bottom: 4px; }
+.tt-row { color: var(--textDim); font-size: .78rem; }
+.tt-row span { color: var(--text); }
+
+/* STATS PANEL */
+#stats-panel {
+  grid-area: stats;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  overflow-y: auto; padding: 16px;
+}
+#stats-panel::-webkit-scrollbar { width: 4px; }
+#stats-panel::-webkit-scrollbar-thumb { background: var(--border); }
+.sp-title {
+  font-family: 'Cinzel', serif;
+  font-size: .85rem; font-weight: 700;
+  color: var(--gold); letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.stat-card {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px; margin-bottom: 10px;
+}
+.stat-card-title {
+  font-family: 'Cinzel', serif;
+  font-size: .7rem; color: var(--textDim);
+  text-transform: uppercase; letter-spacing: .08em;
+  margin-bottom: 6px;
+}
+.stat-big {
+  font-family: 'Cinzel', serif;
+  font-size: 1.8rem; font-weight: 800;
+  color: var(--gold);
+}
+.stat-big.red { color: #e05555; }
+.stat-big.green { color: #5bc96e; }
+.stat-small { font-size: .8rem; color: var(--textDim); margin-top: 2px; }
+.stat-row {
+  display: flex; justify-content: space-between;
+  font-size: .82rem; padding: 3px 0;
+  border-bottom: 1px solid rgba(30,48,72,.5);
+}
+.stat-row:last-child { border-bottom: none; }
+.stat-row .val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .8rem; color: var(--gold);
+}
+.day-breakdown { margin-top: 4px; }
+.dbar-row {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 4px;
+}
+.dbar-label {
+  font-size: .7rem; color: var(--textDim);
+  width: 40px; flex-shrink: 0;
+  font-family: 'Cinzel', serif;
+}
+.dbar-track {
+  flex: 1; height: 8px;
+  background: var(--border); border-radius: 4px;
+  overflow: hidden;
+}
+.dbar-fill {
+  height: 100%; border-radius: 4px;
+  background: linear-gradient(to right, var(--goldDim), var(--gold));
+  transition: width .4s;
+}
+.dbar-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .7rem; color: var(--textDim);
+  width: 28px; text-align: right; flex-shrink: 0;
+}
+
+/* HERO MODAL */
+#hero-modal {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(4,6,8,.85);
+  display: none; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+#hero-modal.visible { display: flex; }
+.modal-box {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 90%; max-width: 860px;
+  max-height: 88vh; overflow-y: auto;
+  position: relative;
+}
+.modal-box::-webkit-scrollbar { width: 4px; }
+.modal-box::-webkit-scrollbar-thumb { background: var(--border); }
+.modal-header {
+  padding: 22px 28px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 16px;
+  position: sticky; top: 0; background: var(--panel); z-index: 1;
+}
+.modal-avatar {
+  width: 56px; height: 56px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Cinzel', serif; font-size: 1.1rem;
+  font-weight: 700; flex-shrink: 0;
+}
+.modal-hero-name {
+  font-family: 'Cinzel', serif;
+  font-size: 1.4rem; font-weight: 800;
+  color: var(--gold);
+}
+.modal-hero-sub {
+  font-size: .9rem; color: var(--textDim);
+  margin-top: 2px;
+}
+.modal-close {
+  margin-left: auto; background: none;
+  border: 1px solid var(--border); color: var(--textDim);
+  width: 36px; height: 36px; border-radius: 4px;
+  cursor: pointer; font-size: 1.1rem;
+  transition: all .15s; flex-shrink: 0;
+}
+.modal-close:hover { border-color: var(--red); color: #e05555; }
+.modal-body { padding: 22px 28px; }
+.modal-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 16px; margin-bottom: 20px;
+}
+.modal-section-title {
+  font-family: 'Cinzel', serif;
+  font-size: .8rem; font-weight: 700;
+  color: var(--gold); text-transform: uppercase;
+  letter-spacing: .08em; margin-bottom: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.timeline {
+  position: relative; padding-left: 20px;
+}
+.timeline::before {
+  content: '';
+  position: absolute; left: 7px; top: 6px; bottom: 6px;
+  width: 2px; background: var(--border);
+}
+.tl-item {
+  position: relative; margin-bottom: 12px;
+  padding: 8px 12px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.tl-item::before {
+  content: '';
+  position: absolute; left: -16px; top: 50%;
+  transform: translateY(-50%);
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 2px solid var(--bg);
+}
+.tl-item.ok::before { background: var(--green2); }
+.tl-item.late::before { background: #e05555; }
+.tl-day {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .7rem; color: var(--textDim);
+  margin-bottom: 2px;
+}
+.tl-name {
+  font-size: .88rem; color: var(--text);
+  font-weight: 600;
+}
+.tl-badge {
+  display: inline-block; padding: 1px 6px;
+  border-radius: 2px; font-size: .7rem;
+  margin-top: 3px; font-family: 'Cinzel', serif;
+}
+.tl-badge.ok { background: #1a3d1a; color: #5bc96e; }
+.tl-badge.late { background: #3d1a1a; color: #e05555; }
+
+/* COLORS */
+:root {
+  --d1: #c84c4c;
+  --d2: #c87c3c;
+  --d3: #c8b43c;
+  --d4: #5cac5c;
+  --d5: #3c8cbc;
+  --d6: #6c4ccc;
+  --d7: #cc4cac;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Role colors */
+.role-mage    { background: linear-gradient(135deg, #2d1a4a, #4a2a80); color: #b088e8; }
+.role-warrior { background: linear-gradient(135deg, #1a2a4a, #2a4a80); color: #6699dd; }
+.role-support { background: linear-gradient(135deg, #1a3a1a, #2a6a2a); color: #66cc77; }
+.tag-mage    { color: #b088e8; }
+.tag-warrior { color: #6699dd; }
+.tag-support { color: #66cc77; }
+.gold-text { color: var(--gold); font-family: 'JetBrains Mono', monospace; }
+</style>
+</head>
+<body>
+
+<!-- UPLOAD SCREEN -->
+<div id="upload-screen">
+  <div class="upload-box">
+    <div class="upload-title">⚔️ Карта Приключений</div>
+    <div class="upload-sub">Загрузите все 5 файлов данных для точного расчёта скора</div>
+
+    <div class="upload-grid">
+      <div class="file-slot" id="slot-heroes">
+        <label>
+          <input type="file" id="file-heroes" accept=".csv">
+          <span class="slot-name">data_heroes.csv</span>
+          <span class="slot-desc">Герои и очки хода</span>
+          <span class="slot-status" id="st-heroes">○</span>
+        </label>
+      </div>
+      <div class="file-slot" id="slot-objects">
+        <label>
+          <input type="file" id="file-objects" accept=".csv">
+          <span class="slot-name">data_objects.csv</span>
+          <span class="slot-desc">Мельницы (дни, награда)</span>
+          <span class="slot-status" id="st-objects">○</span>
+        </label>
+      </div>
+      <div class="file-slot" id="slot-dist-start">
+        <label>
+          <input type="file" id="file-dist-start" accept=".csv">
+          <span class="slot-name">dist_start.csv</span>
+          <span class="slot-desc">Расстояния от замка</span>
+          <span class="slot-status" id="st-dist-start">○</span>
+        </label>
+      </div>
+      <div class="file-slot" id="slot-dist-objects">
+        <label>
+          <input type="file" id="file-dist-objects" accept=".csv">
+          <span class="slot-name">dist_objects.csv</span>
+          <span class="slot-desc">Матрица расстояний (700x700)</span>
+          <span class="slot-status" id="st-dist-objects">○</span>
+        </label>
+      </div>
+      <div class="file-slot" id="slot-submit">
+        <label>
+          <input type="file" id="file-submit" accept=".csv">
+          <span class="slot-name">submit.csv</span>
+          <span class="slot-desc">Ваше решение (маршруты)</span>
+          <span class="slot-status" id="st-submit">○</span>
+        </label>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="btn-launch" disabled>🗡️ Начать Экспедицию</button>
+    <a class="demo-link" id="btn-demo">Использовать демо-данные (из примера)</a>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="main-app">
+  <header id="app-header">
+    <div class="app-title">⚔️ Heroes VRPTW</div>
+    <div class="header-stats">
+      <div class="hstat">Скор<span id="hs-score">—</span></div>
+      <div class="hstat">Золото<span id="hs-gold">—</span></div>
+      <div class="hstat">Героев<span id="hs-heroes">—</span></div>
+      <div class="hstat">Мельниц<span id="hs-mills">—</span></div>
+    </div>
+    <div class="spacer"></div>
+    <div id="day-controls">
+      <span class="day-label">День</span>
+      <input type="range" id="day-slider" min="0" max="7" step="1" value="0">
+      <div id="day-display">Все</div>
+    </div>
+    <button class="btn-upload2" id="btn-reupload">↑ Загрузить</button>
+  </header>
+
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">Герои (по золоту)</div>
+      <input class="search-box" type="text" id="hero-search" placeholder="Поиск по ID или роли...">
+      <div class="filter-row">
+        <button class="filter-btn active" data-filter="all">Все</button>
+        <button class="filter-btn" data-filter="mage">🧙 Маг</button>
+        <button class="filter-btn" data-filter="warrior">⚔️ Воин</button>
+        <button class="filter-btn" data-filter="support">🛡️ Саппорт</button>
+      </div>
+    </div>
+    <div id="hero-list"></div>
+  </div>
+
+  <div id="map-panel">
+    <canvas id="map-canvas"></canvas>
+    <div class="map-overlay">
+      <div class="map-legend">
+        <div class="legend-title">День открытия</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--d1)"></div>День 1</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--d2)"></div>День 2</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--d3)"></div>День 3</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--d4)"></div>День 4</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--d5)"></div>День 5</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--d6)"></div>День 6</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--d7)"></div>День 7</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ffffff;border:2px solid #c8a84b;width:12px;height:12px;"></div>Замок</div>
+      </div>
+    </div>
+    <div class="map-tooltip" id="map-tooltip">
+      <div class="tt-title" id="tt-title"></div>
+      <div id="tt-body"></div>
+    </div>
+  </div>
+
+  <div id="stats-panel">
+    <div class="sp-title">📊 Статистика</div>
+
+    <div class="stat-card">
+      <div class="stat-card-title">VRPTW Score</div>
+      <div class="stat-big" id="sp-score">—</div>
+      <div class="stat-small" id="sp-score-sub"></div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-card-title">Золото собрано</div>
+      <div class="stat-row">
+        <span>Валовое (500 × успешные)</span><span class="val" id="sp-gross">—</span>
+      </div>
+      <div class="stat-row">
+        <span>Затраты на героев</span><span class="val" id="sp-hcost">—</span>
+      </div>
+      <div class="stat-row">
+        <span>Чистое (формула)</span><span class="val" id="sp-net">—</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-card-title">Мельницы</div>
+      <div class="stat-row">
+        <span>Успешно (вовремя) ✅</span><span class="val" id="sp-visited">—</span>
+      </div>
+      <div class="stat-row">
+        <span>Опоздано ❌</span><span class="val" id="sp-missed">—</span>
+      </div>
+      <div class="stat-row">
+        <span>Всего</span><span class="val" id="sp-total">—</span>
+      </div>
+      <div class="stat-row">
+        <span>Охват</span><span class="val" id="sp-pct">—</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-card-title">По дням (успешных)</div>
+      <div class="day-breakdown" id="sp-days"></div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-card-title">Герои по ролям</div>
+      <div class="stat-row">
+        <span class="tag-mage">🧙 Маги</span><span class="val" id="sp-mage">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="tag-warrior">⚔️ Воины</span><span class="val" id="sp-warrior">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="tag-support">🛡️ Саппорты</span><span class="val" id="sp-support">—</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-card-title">Топ героев (по золоту)</div>
+      <div id="sp-top-heroes"></div>
+    </div>
+  </div>
+</div>
+
+<!-- HERO MODAL -->
+<div id="hero-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-avatar" id="modal-avatar">?</div>
+      <div>
+        <div class="modal-hero-name" id="modal-name">—</div>
+        <div class="modal-hero-sub" id="modal-sub">—</div>
+      </div>
+      <button class="modal-close" id="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-grid">
+        <div>
+          <div class="modal-section-title">⚡ Параметры героя</div>
+          <div id="modal-params"></div>
+        </div>
+        <div>
+          <div class="modal-section-title">💰 Результаты</div>
+          <div id="modal-results"></div>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <div class="modal-section-title">📅 Хроника маршрута</div>
+        <div class="timeline" id="modal-timeline"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Константы
+const VISIT_COST = 100;
+const HERO_COST = 2500;
+const REWARD = 500;
+const N_DAYS = 7;
+const DAY_COLORS = ['', '#c84c4c', '#c87c3c', '#c8b43c', '#5cac5c', '#3c8cbc', '#6c4ccc', '#cc4cac'];
+const ROLE_COLORS = { mage: '#b088e8', warrior: '#6699dd', support: '#66cc77' };
+const ROLE_EMOJI = { mage: '🧙', warrior: '⚔️', support: '🛡️' };
+const ROLE_NAMES = { mage: 'Маг', warrior: 'Воин', support: 'Саппорт' };
+
+// Состояние приложения
+let G = {
+  heroes: [],
+  objects: [],
+  distStart: {},
+  distanceMatrix: null,
+  solution: [],
+  routes: {},
+  stats: {},
+  globalStats: {},
+  positions: {},
+  currentDay: 0,
+  activeHero: null,
+  filter: 'all',
+  search: ''
+};
+
+// Загруженные файлы
+const files = { heroes: null, objects: null, distStart: null, distObjects: null, submit: null };
+
+// Парсинг CSV
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+  return lines.slice(1).map(l => {
+    if (!l.trim()) return null;
+    const vals = l.split(',').map(v => v.trim().replace(/"/g, ''));
+    const obj = {};
+    headers.forEach((h, i) => {
+      obj[h] = isNaN(vals[i]) ? vals[i] : Number(vals[i]);
+    });
+    return obj;
+  }).filter(r => r && Object.keys(r).length > 0);
+}
+
+// Парсинг матрицы расстояний (dist_objects.csv)
+function parseDistanceMatrix(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim());
+  // Ищем колонки object_1 ... object_700
+  const objectCols = headers.filter(h => h.startsWith('object_'));
+  const matrix = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const vals = lines[i].split(',').map(v => Number(v.trim()));
+    // Берём только значения для object колонок
+    const row = objectCols.map((_, idx) => vals[headers.indexOf(objectCols[idx])]);
+    matrix.push(row);
+  }
+
+  return matrix;
+}
+
+// Обработчики загрузки файлов
+document.getElementById('file-heroes').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    files.heroes = ev.target.result;
+    document.getElementById('st-heroes').textContent = '✓';
+    document.getElementById('st-heroes').className = 'slot-status ok';
+    document.getElementById('slot-heroes').classList.add('loaded');
+    checkReady();
+  };
+  reader.readAsText(f);
+});
+
+document.getElementById('file-objects').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    files.objects = ev.target.result;
+    document.getElementById('st-objects').textContent = '✓';
+    document.getElementById('st-objects').className = 'slot-status ok';
+    document.getElementById('slot-objects').classList.add('loaded');
+    checkReady();
+  };
+  reader.readAsText(f);
+});
+
+document.getElementById('file-dist-start').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    files.distStart = ev.target.result;
+    document.getElementById('st-dist-start').textContent = '✓';
+    document.getElementById('st-dist-start').className = 'slot-status ok';
+    document.getElementById('slot-dist-start').classList.add('loaded');
+    checkReady();
+  };
+  reader.readAsText(f);
+});
+
+document.getElementById('file-dist-objects').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    files.distObjects = ev.target.result;
+    document.getElementById('st-dist-objects').textContent = '✓';
+    document.getElementById('st-dist-objects').className = 'slot-status ok';
+    document.getElementById('slot-dist-objects').classList.add('loaded');
+    checkReady();
+  };
+  reader.readAsText(f);
+});
+
+document.getElementById('file-submit').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    files.submit = ev.target.result;
+    document.getElementById('st-submit').textContent = '✓';
+    document.getElementById('st-submit').className = 'slot-status ok';
+    document.getElementById('slot-submit').classList.add('loaded');
+    checkReady();
+  };
+  reader.readAsText(f);
+});
+
+function checkReady() {
+  const allLoaded = files.heroes && files.objects && files.distStart && files.distObjects && files.submit;
+  document.getElementById('btn-launch').disabled = !allLoaded;
+}
+
+// Запуск визуализации
+document.getElementById('btn-launch').addEventListener('click', () => {
+  try {
+    const heroesData = parseCSV(files.heroes);
+    const objectsData = parseCSV(files.objects);
+    const distStartData = parseCSV(files.distStart);
+    const distMatrix = parseDistanceMatrix(files.distObjects);
+    const solutionData = parseCSV(files.submit);
+
+    loadData(heroesData, objectsData, distStartData, distMatrix, solutionData);
+  } catch (err) {
+    alert('Ошибка при парсинге файлов: ' + err.message);
+  }
+});
+
+// Кнопка возврата к загрузке
+document.getElementById('btn-reupload').addEventListener('click', () => {
+  document.getElementById('upload-screen').classList.remove('hidden');
+  document.getElementById('main-app').classList.remove('visible');
+});
+
+// Демо-данные (из примера вашего решения)
+document.getElementById('btn-demo').addEventListener('click', generateDemoData);
+
+function generateDemoData() {
+  // Герои (из data_heroes.csv)
+  const heroes = [];
+  for (let i = 1; i <= 100; i++) {
+    heroes.push({ hero_id: i, move_points: 1300 + Math.floor(Math.random() * 600) });
+  }
+
+  // Объекты (из data_objects.csv)
+  const objects = [];
+  for (let i = 1; i <= 700; i++) {
+    objects.push({
+      object_id: i,
+      day_open: Math.floor((i - 1) / 100) + 1,
+      reward: 500
+    });
+  }
+
+  // Расстояния от старта
+  const distStart = [];
+  for (let i = 1; i <= 700; i++) {
+    distStart.push({ object_id: i, dist_start: 200 + (i * 13) % 7800 });
+  }
+
+  // Матрица расстояний (упрощённая)
+  const distMatrix = [];
+  for (let i = 0; i < 700; i++) {
+    const row = [];
+    for (let j = 0; j < 700; j++) {
+      row.push(Math.abs(distStart[i].dist_start - distStart[j].dist_start) + 500);
+    }
+    distMatrix.push(row);
+  }
+
+  // Решение (из вашего примера - 12 героев собирают мельницы)
+  const solution = [];
+  // Герой 1: 495-545 (51 мельница)
+  for (let m = 495; m <= 545; m++) solution.push({ hero_id: 1, object_id: m });
+  // Герой 2: 1-50 (50 мельниц)
+  for (let m = 1; m <= 50; m++) solution.push({ hero_id: 2, object_id: m });
+  // Герой 3: 51-100 (50 мельниц)
+  for (let m = 51; m <= 100; m++) solution.push({ hero_id: 3, object_id: m });
+  // Герой 4: 101-150 (50 мельниц)
+  for (let m = 101; m <= 150; m++) solution.push({ hero_id: 4, object_id: m });
+  // Герой 5: 151-200 (50 мельниц)
+  for (let m = 151; m <= 200; m++) solution.push({ hero_id: 5, object_id: m });
+  // Герой 6: 201-250 (50 мельниц)
+  for (let m = 201; m <= 250; m++) solution.push({ hero_id: 6, object_id: m });
+  // Герой 7: 251-300 (50 мельниц)
+  for (let m = 251; m <= 300; m++) solution.push({ hero_id: 7, object_id: m });
+  // Герой 8: 301-350 (50 мельниц)
+  for (let m = 301; m <= 350; m++) solution.push({ hero_id: 8, object_id: m });
+  // Герой 9: 351-400 (50 мельниц)
+  for (let m = 351; m <= 400; m++) solution.push({ hero_id: 9, object_id: m });
+  // Герой 10: 401-450 (50 мельниц)
+  for (let m = 401; m <= 450; m++) solution.push({ hero_id: 10, object_id: m });
+  // Герой 11: 451-494 (44 мельницы)
+  for (let m = 451; m <= 494; m++) solution.push({ hero_id: 11, object_id: m });
+  // Герой 12: 546-595 (50 мельниц)
+  for (let m = 546; m <= 595; m++) solution.push({ hero_id: 12, object_id: m });
+
+  loadData(heroes, objects, distStart, distMatrix, solution);
+}
+
+// Загрузка данных и симуляция
+function loadData(heroesData, objectsData, distStartData, distMatrix, solutionData) {
+  // Заполняем данные
+  G.heroes = heroesData.map(h => ({
+    hero_id: h.hero_id,
+    move_points: h.move_points
+  }));
+
+  // Определяем роли на основе квантилей
+  const mps = G.heroes.map(h => h.move_points).sort((a, b) => a - b);
+  const q25 = mps[Math.floor(mps.length * 0.25)];
+  const q75 = mps[Math.floor(mps.length * 0.75)];
+
+  G.heroes.forEach(h => {
+    if (h.move_points >= q75) h.role = 'mage';
+    else if (h.move_points >= q25) h.role = 'warrior';
+    else h.role = 'support';
+    h.color = ROLE_COLORS[h.role];
+  });
+
+  G.objects = objectsData.map(o => ({
+    object_id: o.object_id,
+    day_open: o.day_open,
+    reward: o.reward || 500
+  }));
+
+  G.distStart = {};
+  distStartData.forEach(d => {
+    G.distStart[d.object_id] = d.dist_start;
+  });
+
+  // Матрица расстояний
+  G.distanceMatrix = distMatrix;
+
+  G.solution = solutionData.map(s => ({
+    hero_id: s.hero_id,
+    object_id: s.object_id
+  }));
+
+  // Проверяем дубликаты object_id (удаляем)
+  const seen = new Set();
+  G.solution = G.solution.filter(item => {
+    if (seen.has(item.object_id)) return false;
+    seen.add(item.object_id);
+    return true;
+  });
+
+  // Группируем маршруты по героям
+  const routesByHero = {};
+  G.solution.forEach(({hero_id, object_id}) => {
+    if (!routesByHero[hero_id]) routesByHero[hero_id] = [];
+    routesByHero[hero_id].push(object_id);
+  });
+  G.routes = routesByHero;
+
+  // Симулируем с правильным расчётом скора
+  simulateAll();
+
+  // Генерируем позиции для карты
+  computePositions();
+
+  // Рендерим
+  renderHeroList();
+  renderStats();
+
+  // Показываем основное приложение
+  document.getElementById('upload-screen').classList.add('hidden');
+  document.getElementById('main-app').classList.add('visible');
+
+  // Инициализируем карту
+  initMap();
+  renderMap();
+}
+
+// Симуляция всех героев с правильным скором
+function simulateAll() {
+  const heroStats = {};
+  let totalOnTime = 0; // Количество успешных посещений (вовремя)
+  const onTimeByDay = {1:0,2:0,3:0,4:0,5:0,6:0,7:0};
+
+  Object.entries(G.routes).forEach(([hid, route]) => {
+    const hero = G.heroes.find(h => h.hero_id === +hid);
+    if (!hero) return;
+
+    const result = simulateHero(hero, route);
+    heroStats[hid] = result;
+    totalOnTime += result.onTime;
+
+    Object.entries(result.onTimeByDay).forEach(([d, cnt]) => {
+      onTimeByDay[+d] = (onTimeByDay[+d] || 0) + cnt;
+    });
+  });
+
+  const maxHero = Math.max(...Object.keys(G.routes).map(Number), 0);
+  const heroCost = maxHero * HERO_COST;
+  const totalGold = totalOnTime * REWARD;
+  const score = totalGold - heroCost;
+
+  G.stats = heroStats;
+  G.globalStats = {
+    score,
+    totalGold,
+    heroCost,
+    maxHero,
+    totalOnTime,
+    totalMissed: 700 - totalOnTime,
+    onTimeByDay,
+    totalMills: 700
+  };
+}
+
+// Симуляция одного героя с точным расчётом по формуле
+function simulateHero(hero, route) {
+  const mp = hero.move_points;
+  let pos = 0, day = 1, curMp = mp;
+  let onTime = 0;
+  const timeline = [];
+  const visitedOnTime = [];
+  const onTimeByDay = {};
+
+  for (const oid of route) {
+    const obj = G.objects.find(o => o.object_id === oid);
+    if (!obj) continue;
+
+    const targetDay = obj.day_open;
+
+    // Расстояние до объекта
+    let distance;
+    if (pos === 0) {
+      distance = G.distStart[oid] || 1000;
+    } else {
+      // Используем матрицу расстояний (индексы с 0)
+      distance = G.distanceMatrix[pos - 1][oid - 1];
+    }
+
+    // Перемещение с учетом смены дней
+    let remTravel = distance;
+    let d = day, mp2 = curMp;
+    while (remTravel > 0 && d <= N_DAYS) {
+      const step = Math.min(mp2, remTravel);
+      mp2 -= step;
+      remTravel -= step;
+      if (remTravel > 0) {
+        d++;
+        mp2 = mp;
+      }
+    }
+    if (d > N_DAYS) break;
+
+    // Ожидание дня открытия
+    if (d < targetDay) {
+      d = targetDay;
+      mp2 = mp;
+    }
+    if (d > N_DAYS) break;
+
+    // Посещение (правило последнего шага)
+    const action = (d === targetDay) ? 'ok' : 'late';
+    if (action === 'ok') {
+      onTime++;
+      visitedOnTime.push(oid);
+      onTimeByDay[d] = (onTimeByDay[d] || 0) + 1;
+    }
+
+    timeline.push({ oid, action, day: d, targetDay, distance });
+
+    // Тратим очки на посещение
+    mp2 = Math.max(0, mp2 - VISIT_COST);
+
+    pos = oid;
+    day = d;
+    curMp = mp2;
+    if (curMp === 0) {
+      day++;
+      curMp = mp;
+    }
+  }
+
+  return {
+    hero_id: hero.hero_id,
+    onTime,
+    gold: onTime * REWARD,
+    timeline,
+    visitedOnTime,
+    onTimeByDay
+  };
+}
+
+// Генерация позиций на карте
+function computePositions() {
+  const phi = (1 + Math.sqrt(5)) / 2;
+  G.positions = {};
+  G.objects.forEach((obj, i) => {
+    const angle = i / phi * Math.PI * 2 * 3;
+    const r = G.distStart[obj.object_id] || 1000;
+    G.positions[obj.object_id] = { x: r * Math.cos(angle), y: r * Math.sin(angle) };
+  });
+}
+
+// Рендер списка героев
+function renderHeroList() {
+  const list = document.getElementById('hero-list');
+  const usedIds = new Set(Object.keys(G.stats).map(Number));
+
+  let heroes = G.heroes
+    .filter(h => usedIds.has(h.hero_id))
+    .map(h => ({
+      ...h,
+      ...G.stats[h.hero_id],
+      onTime: G.stats[h.hero_id]?.onTime || 0,
+      gold: G.stats[h.hero_id]?.gold || 0
+    }))
+    .sort((a, b) => b.gold - a.gold);
+
+  // Фильтры
+  if (G.filter !== 'all') {
+    heroes = heroes.filter(h => h.role === G.filter);
+  }
+  if (G.search) {
+    const search = G.search.toLowerCase();
+    heroes = heroes.filter(h =>
+      h.hero_id.toString().includes(search) ||
+      h.role.includes(search)
+    );
+  }
+
+  // Расчет процентилей для отображения MP
+  const mpMin = 1300, mpMax = 1900;
+
+  list.innerHTML = heroes.map(hero => {
+    const mpPct = ((hero.move_points - mpMin) / (mpMax - mpMin)) * 100;
+    return `
+    <div class="hero-item ${G.activeHero === hero.hero_id ? 'active' : ''}" data-id="${hero.hero_id}">
+      <div class="hero-avatar role-${hero.role}">${ROLE_EMOJI[hero.role]}</div>
+      <div class="hero-info">
+        <div class="hero-name">Герой #${hero.hero_id}</div>
+        <div class="hero-subline">
+          <span class="tag-${hero.role}">${ROLE_NAMES[hero.role]}</span>
+          <span>${hero.move_points} mp</span>
+          <span>${hero.onTime} ✅</span>
+        </div>
+        <div class="mp-bar"><div class="mp-bar-fill" style="width:${mpPct}%;background:${hero.color}"></div></div>
+      </div>
+      <div class="hero-gold-badge">${hero.gold.toLocaleString()}g</div>
+    </div>
+  `}).join('');
+
+  document.querySelectorAll('.hero-item').forEach(el => {
+    el.addEventListener('click', () => openHeroModal(+el.dataset.id));
+  });
+
+  if (list.children.length === 0) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--textDim);">Нет совпадений</div>';
+  }
+}
+
+// Рендер статистики с правильной формулой
+function renderStats() {
+  const s = G.globalStats;
+  if (!s) return;
+
+  document.getElementById('hs-score').textContent = s.score.toLocaleString();
+  document.getElementById('hs-gold').textContent = s.totalGold.toLocaleString();
+  document.getElementById('hs-heroes').textContent = s.maxHero;
+  document.getElementById('hs-mills').textContent = `${s.totalOnTime}/${s.totalMills}`;
+
+  document.getElementById('sp-score').textContent = s.score.toLocaleString();
+  document.getElementById('sp-score').className = 'stat-big ' + (s.score > 0 ? 'green' : 'red');
+  document.getElementById('sp-score-sub').textContent = `${s.totalGold.toLocaleString()} − ${s.heroCost.toLocaleString()}`;
+  document.getElementById('sp-gross').textContent = s.totalGold.toLocaleString();
+  document.getElementById('sp-hcost').textContent = `-${s.heroCost.toLocaleString()}`;
+  document.getElementById('sp-net').textContent = s.score.toLocaleString();
+  document.getElementById('sp-visited').textContent = s.totalOnTime;
+  document.getElementById('sp-missed').textContent = s.totalMissed;
+  document.getElementById('sp-total').textContent = s.totalMills;
+  document.getElementById('sp-pct').textContent = Math.round(s.totalOnTime / s.totalMills * 100) + '%';
+
+  const maxDay = Math.max(...Object.values(s.onTimeByDay));
+  const daysEl = document.getElementById('sp-days');
+  daysEl.innerHTML = '';
+  for (let d = 1; d <= 7; d++) {
+    const cnt = s.onTimeByDay[d] || 0;
+    const pct = maxDay ? (cnt / maxDay * 100) : 0;
+    daysEl.innerHTML += `
+      <div class="dbar-row">
+        <div class="dbar-label" style="color:${DAY_COLORS[d]}">День ${d}</div>
+        <div class="dbar-track"><div class="dbar-fill" style="width:${pct}%;background:${DAY_COLORS[d]}"></div></div>
+        <div class="dbar-val">${cnt}</div>
+      </div>
+    `;
+  }
+
+  // Роли
+  const roleCounts = { mage: 0, warrior: 0, support: 0 };
+  Object.keys(G.stats).forEach(hid => {
+    const hero = G.heroes.find(h => h.hero_id === +hid);
+    if (hero) roleCounts[hero.role]++;
+  });
+  document.getElementById('sp-mage').textContent = roleCounts.mage;
+  document.getElementById('sp-warrior').textContent = roleCounts.warrior;
+  document.getElementById('sp-support').textContent = roleCounts.support;
+
+  // Топ героев
+  const topEl = document.getElementById('sp-top-heroes');
+  const topHeroes = Object.entries(G.stats)
+    .sort((a, b) => b[1].gold - a[1].gold)
+    .slice(0, 5)
+    .map(([hid, stat]) => {
+      const hero = G.heroes.find(h => h.hero_id === +hid);
+      return `<div class="stat-row"><span>${ROLE_EMOJI[hero?.role]} Герой #${hid}</span><span class="val">${stat.gold.toLocaleString()}g</span></div>`;
+    }).join('');
+  topEl.innerHTML = topHeroes || '<div class="stat-row">—</div>';
+}
+
+// Открыть модалку героя
+function openHeroModal(hid) {
+  G.activeHero = hid;
+  renderHeroList();
+
+  const hero = G.heroes.find(h => h.hero_id === hid);
+  const stats = G.stats[hid] || {};
+  const timeline = stats.timeline || [];
+
+  document.getElementById('modal-avatar').className = `modal-avatar role-${hero?.role}`;
+  document.getElementById('modal-avatar').textContent = ROLE_EMOJI[hero?.role] || '?';
+  document.getElementById('modal-name').textContent = `Герой #${hid}`;
+  document.getElementById('modal-sub').textContent = `${ROLE_NAMES[hero?.role] || ''} · ${hero?.move_points || '?'} mp/день`;
+
+  document.getElementById('modal-params').innerHTML = `
+    <div class="stat-row"><span>Hero ID</span><span class="val">#${hid}</span></div>
+    <div class="stat-row"><span>Очки хода/день</span><span class="val">${hero?.move_points || '?'}</span></div>
+    <div class="stat-row"><span>Роль</span><span class="val tag-${hero?.role}">${ROLE_NAMES[hero?.role] || '?'}</span></div>
+    <div class="stat-row"><span>Мельниц в маршруте</span><span class="val">${(G.routes[hid] || []).length}</span></div>
+  `;
+
+  document.getElementById('modal-results').innerHTML = `
+    <div class="stat-row"><span>Успешно (вовремя) ✅</span><span class="val">${stats.onTime || 0}</span></div>
+    <div class="stat-row"><span>Золото собрано</span><span class="val">${(stats.gold || 0).toLocaleString()}g</span></div>
+  `;
+
+  const tlEl = document.getElementById('modal-timeline');
+  if (timeline.length === 0) {
+    tlEl.innerHTML = '<div style="color:var(--textDim);font-style:italic">Маршрут пуст</div>';
+  } else {
+    tlEl.innerHTML = timeline.map(step => `
+      <div class="tl-item ${step.action}">
+        <div class="tl-day">День ${step.day}${step.targetDay && step.targetDay !== step.day ? ` (открытие: ${step.targetDay})` : ''}</div>
+        <div class="tl-name">Мельница #${step.oid}</div>
+        <div class="tl-badge ${step.action}">${step.action === 'ok' ? '✅ +500g' : '❌ Опоздал'}</div>
+        <div style="font-size:.7rem;color:var(--textDim);">Путь: ${step.distance} mp</div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('hero-modal').classList.add('visible');
+  renderMap();
+}
+
+// Закрыть модалку
+document.getElementById('modal-close').addEventListener('click', () => {
+  document.getElementById('hero-modal').classList.remove('visible');
+  G.activeHero = null;
+  renderHeroList();
+  renderMap();
+});
+
+// Карта
+let mapCanvas, mapCtx, mapTransform = { x: 0, y: 0, scale: 1 };
+let mapDragging = false, mapDragStart = { x: 0, y: 0 };
+
+function initMap() {
+  mapCanvas = document.getElementById('map-canvas');
+  mapCtx = mapCanvas.getContext('2d');
+
+  function resize() {
+    const rect = mapCanvas.parentElement.getBoundingClientRect();
+    mapCanvas.width = rect.width;
+    mapCanvas.height = rect.height - 2;
+    fitMap();
+    renderMap();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  mapCanvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.85 : 1.18;
+    const rect = mapCanvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    mapTransform.x = mx - (mx - mapTransform.x) * delta;
+    mapTransform.y = my - (my - mapTransform.y) * delta;
+    mapTransform.scale *= delta;
+    renderMap();
+  });
+
+  mapCanvas.addEventListener('mousedown', e => {
+    mapDragging = true;
+    mapDragStart = { x: e.clientX - mapTransform.x, y: e.clientY - mapTransform.y };
+    mapCanvas.style.cursor = 'grabbing';
+  });
+
+  mapCanvas.addEventListener('mousemove', e => {
+    if (mapDragging) {
+      mapTransform.x = e.clientX - mapDragStart.x;
+      mapTransform.y = e.clientY - mapDragStart.y;
+      renderMap();
+    }
+    handleMapHover(e);
+  });
+
+  mapCanvas.addEventListener('mouseup', () => {
+    mapDragging = false;
+    mapCanvas.style.cursor = 'crosshair';
+  });
+
+  mapCanvas.addEventListener('mouseleave', () => {
+    mapDragging = false;
+    document.getElementById('map-tooltip').classList.remove('visible');
+  });
+}
+
+function fitMap() {
+  const positions = Object.values(G.positions);
+  if (!positions.length) return;
+
+  const xs = positions.map(p => p.x);
+  const ys = positions.map(p => p.y);
+  const minX = Math.min(...xs, 0);
+  const maxX = Math.max(...xs, 0);
+  const minY = Math.min(...ys, 0);
+  const maxY = Math.max(...ys, 0);
+
+  const W = mapCanvas.width;
+  const H = mapCanvas.height;
+  const padding = 60;
+
+  const scaleX = (W - 2 * padding) / (maxX - minX || 1);
+  const scaleY = (H - 2 * padding) / (maxY - minY || 1);
+  mapTransform.scale = Math.min(scaleX, scaleY) * 0.9;
+  mapTransform.x = W / 2 - (minX + maxX) / 2 * mapTransform.scale;
+  mapTransform.y = H / 2 - (minY + maxY) / 2 * mapTransform.scale;
+}
+
+function worldToScreen(wx, wy) {
+  return {
+    x: wx * mapTransform.scale + mapTransform.x,
+    y: wy * mapTransform.scale + mapTransform.y
+  };
+}
+
+function renderMap() {
+  if (!mapCtx) return;
+  const W = mapCanvas.width;
+  const H = mapCanvas.height;
+  const ctx = mapCtx;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Сетка
+  ctx.save();
+  ctx.strokeStyle = '#0e1e0e';
+  ctx.lineWidth = 1;
+  const gridSize = 100 * mapTransform.scale;
+  if (gridSize > 20) {
+    const startX = (mapTransform.x % gridSize);
+    const startY = (mapTransform.y % gridSize);
+    for (let x = startX; x < W; x += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, H);
+      ctx.stroke();
+    }
+    for (let y = startY; y < H; y += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+
+  // Собираем все успешно посещенные мельницы
+  const allOnTime = new Set();
+  Object.values(G.stats).forEach(stat => {
+    stat.visitedOnTime?.forEach(oid => allOnTime.add(oid));
+  });
+
+  // Рисуем мельницы
+  G.objects.forEach(obj => {
+    const pos = G.positions[obj.object_id];
+    if (!pos) return;
+
+    const s = worldToScreen(pos.x, pos.y);
+    if (s.x < -20 || s.x > W + 20 || s.y < -20 || s.y > H + 20) return;
+
+    const isOnTime = allOnTime.has(obj.object_id);
+    const isInDay = G.currentDay === 0 || obj.day_open === G.currentDay;
+
+    ctx.save();
+    ctx.globalAlpha = (G.currentDay > 0 && !isInDay) ? 0.15 : (isOnTime ? 0.9 : 0.4);
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = DAY_COLORS[obj.day_open];
+    ctx.fill();
+    ctx.strokeStyle = DAY_COLORS[obj.day_open];
+    ctx.lineWidth = isOnTime ? 1.5 : 0.5;
+    ctx.stroke();
+    ctx.restore();
+
+    // Отметка об успехе
+    if (isOnTime && mapTransform.scale > 0.08) {
+      ctx.save();
+      ctx.fillStyle = '#ffffffaa';
+      ctx.font = '8px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✓', s.x, s.y);
+      ctx.restore();
+    }
+  });
+
+  // Рисуем пути героев
+  const heroesToDraw = G.activeHero ? [G.activeHero] : Object.keys(G.routes).map(Number);
+
+  heroesToDraw.forEach(hid => {
+    const hero = G.heroes.find(h => h.hero_id === hid);
+    const route = G.routes[hid] || [];
+    if (!hero || route.length === 0) return;
+
+    ctx.save();
+    ctx.strokeStyle = hero.color;
+    ctx.lineWidth = G.activeHero ? 2.5 : 1;
+    ctx.globalAlpha = G.activeHero ? 0.8 : 0.3;
+    ctx.setLineDash([5, 3]);
+    ctx.beginPath();
+
+    // Начинаем от замка
+    const castle = worldToScreen(0, 0);
+    ctx.moveTo(castle.x, castle.y);
+
+    route.forEach(oid => {
+      const pos = G.positions[oid];
+      if (!pos) return;
+      const s = worldToScreen(pos.x, pos.y);
+      ctx.lineTo(s.x, s.y);
+    });
+
+    ctx.stroke();
+    ctx.restore();
+  });
+
+  // Замок
+  const castle = worldToScreen(0, 0);
+  ctx.save();
+  ctx.fillStyle = '#c8a84b';
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(castle.x, castle.y, 10, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#0a0800';
+  ctx.font = 'bold 12px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🏰', castle.x, castle.y);
+  ctx.restore();
+
+  // Текущие позиции героев (если выбран день)
+  if (G.currentDay > 0) {
+    heroesToDraw.forEach(hid => {
+      const hero = G.heroes.find(h => h.hero_id === hid);
+      const stats = G.stats[hid];
+      if (!hero || !stats || !stats.timeline) return;
+
+      // Находим последний шаг в текущем дне
+      const lastStep = stats.timeline.filter(step => step.day <= G.currentDay).pop();
+      if (!lastStep) return;
+
+      const pos = G.positions[lastStep.oid];
+      if (!pos) return;
+
+      const s = worldToScreen(pos.x, pos.y);
+      ctx.save();
+      ctx.fillStyle = hero.color;
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, G.activeHero === hid ? 8 : 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(hid, s.x, s.y);
+      ctx.restore();
+    });
+  }
+}
+
+function handleMapHover(e) {
+  const rect = mapCanvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const tooltip = document.getElementById('map-tooltip');
+
+  let found = null;
+  for (const obj of G.objects) {
+    const pos = G.positions[obj.object_id];
+    if (!pos) continue;
+    const s = worldToScreen(pos.x, pos.y);
+    const dist = Math.hypot(mx - s.x, my - s.y);
+    if (dist < 8) {
+      found = obj;
+      break;
+    }
+  }
+
+  if (found) {
+    const allOnTime = new Set();
+    Object.values(G.stats).forEach(stat => {
+      stat.visitedOnTime?.forEach(oid => allOnTime.add(oid));
+    });
+    const isOnTime = allOnTime.has(found.object_id);
+
+    tooltip.style.left = (e.clientX - rect.left + 15) + 'px';
+    tooltip.style.top = (e.clientY - rect.top - 10) + 'px';
+    document.getElementById('tt-title').textContent = `Мельница #${found.object_id}`;
+    document.getElementById('tt-body').innerHTML = `
+      <div class="tt-row">День открытия: <span style="color:${DAY_COLORS[found.day_open]}">${found.day_open}</span></div>
+      <div class="tt-row">Расстояние от замка: <span>${G.distStart[found.object_id] || '?'} mp</span></div>
+      <div class="tt-row">Статус: <span>${isOnTime ? '✅ Успешно' : '❌ Не посещена вовремя'}</span></div>
+    `;
+    tooltip.classList.add('visible');
+  } else {
+    tooltip.classList.remove('visible');
+  }
+}
+
+// День слайдер
+const slider = document.getElementById('day-slider');
+const dayDisplay = document.getElementById('day-display');
+
+slider.addEventListener('input', () => {
+  G.currentDay = +slider.value;
+  dayDisplay.textContent = G.currentDay === 0 ? 'Все' : `День ${G.currentDay}`;
+  const pct = (G.currentDay / 7) * 100;
+  slider.style.background = `linear-gradient(to right, var(--gold) ${pct}%, var(--border) ${pct}%)`;
+  renderMap();
+});
+
+// Фильтры
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    G.filter = btn.dataset.filter;
+    renderHeroList();
+  });
+});
+
+document.getElementById('hero-search').addEventListener('input', e => {
+  G.search = e.target.value.toLowerCase();
+  renderHeroList();
+});
+
+// Закрытие модалки по клику на фон
+document.getElementById('hero-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('hero-modal')) {
+    document.getElementById('modal-close').click();
+  }
+});
+
+// Инициализация
+</script>
+</body>
+</html>
