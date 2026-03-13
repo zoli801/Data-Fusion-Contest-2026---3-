@@ -81,6 +81,11 @@
 
 ## 🔗 Ссылки
 
+* ⚙️ Сайт визуализации передвижения и характеристики героев: [тут](https://huggingface.co/spaces/zoli800/heroes-map)
+<img width="1403" height="993" alt="Снимок экрана 2026-03-13 в 23 40 41" src="https://github.com/user-attachments/assets/96911c5d-5c3a-40e9-a8de-e8550cbec94b" />
+<img width="1403" height="993" alt="Снимок экрана 2026-03-13 в 23 41 24" src="https://github.com/user-attachments/assets/d2c49b08-25c7-44e8-9357-941ddda75723" />
+<img width="1403" height="993" alt="Снимок экрана 2026-03-13 в 23 41 45" src="https://github.com/user-attachments/assets/0cf6dba7-8542-4b65-bda3-7688ebf69782" />
+
 * 📊 Kaggle: [https://www.kaggle.com/code/zoli800/data-fusion-contest-2026-3](https://www.kaggle.com/code/zoli800/data-fusion-contest-2026-3) 🥇
 * 💬 Мой TG: [@zoli_800](https://t.me/zoli_800)
 
