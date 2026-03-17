@@ -83,6 +83,10 @@
 
 * ⚙️ Сайт визуализации передвижения и характеристики героев: [тут](https://huggingface.co/spaces/zoli800/heroes-map)
 и [тут](https://huggingface.co/spaces/zoli800/site_2)
+
+пример табличной визуализации(для четкого изучения процесса):
+<img width="1264" height="838" alt="Снимок экрана 2026-03-17 в 10 43 46" src="https://github.com/user-attachments/assets/e453b042-6df9-4e43-9d47-608cc89c0a36" />
+пример простой визуализации передвижение:
 <img width="1403" height="993" alt="Снимок экрана 2026-03-13 в 23 40 41" src="https://github.com/user-attachments/assets/96911c5d-5c3a-40e9-a8de-e8550cbec94b" />
 <img width="1403" height="993" alt="Снимок экрана 2026-03-13 в 23 41 24" src="https://github.com/user-attachments/assets/d2c49b08-25c7-44e8-9357-941ddda75723" />
 <img width="1403" height="993" alt="Снимок экрана 2026-03-13 в 23 41 45" src="https://github.com/user-attachments/assets/0cf6dba7-8542-4b65-bda3-7688ebf69782" />
