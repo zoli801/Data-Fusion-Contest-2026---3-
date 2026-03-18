@@ -94,6 +94,8 @@
 * 📊 Kaggle: [https://www.kaggle.com/code/zoli800/data-fusion-contest-2026-3](https://www.kaggle.com/code/zoli800/data-fusion-contest-2026-3) 🥇
 * 💬 Мой TG: [@zoli_800](https://t.me/zoli_800)
 
+* разбор решение можете найти [тут](https://docs.google.com/presentation/d/1_lqvXTJ29cajtrkl7yKYgbd5p7NjA4sPwWRtkeMZiS0/edit?usp=sharing)
+
 ---
 
 **Удачи на соревновании!** 🍀 Пусть твои герои всегда успевают на «последний шаг»! 💰✨
